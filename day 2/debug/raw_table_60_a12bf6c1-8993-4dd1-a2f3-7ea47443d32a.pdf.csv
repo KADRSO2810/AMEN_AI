@@ -1,0 +1,9 @@
+﻿0;1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16
+;Durée;;;Emission;;;Taux Fixe;;;Taux Variable;;;;;;
+;;;(montant nominal;;Taux plus haut;Taux plus haut;Taux plus bas;Taux plus bas;TMP;TMP;Taux plus haut;Taux plus haut;Taux plus bas;Taux plus bas;TMP;TMP
+;en MDT);;;;;;;;;;;;;;;
+De 1 à 30* jours;221,00;9,70;7,70;8,53;0,00;0,00;0,00;;;;;;;;;
+De 30** à 90* jours;56,00;10,55;8,50;9,64;0,00;0,00;0,00;;;;;;;;;
+"De 90**  à 180*jours";7,00;9,75;8,50;9,04;0,00;0,00;0,00;;;;;;;;;
+"De 180** à 360*jours";2,00;9,70;9,00;9,35;0,00;0,00;0,00;;;;;;;;;
+Au-delà d'1 an;10,00;9,65;9,65;9,65;0,00;0,00;0,00;;;;;;;;;

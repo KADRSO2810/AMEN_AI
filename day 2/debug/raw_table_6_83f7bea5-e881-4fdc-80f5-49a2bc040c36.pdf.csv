@@ -1,0 +1,18 @@
+﻿0;1;2;3;4;5;6;7;8;9;10;11;12
+;;ISIN;;;Libellé;;;Type;;;Montant (MDT);
+;TN0007800071;BAOBAB-MICROCRED 2020-1 CA TF;Paiement de coupons;0,16;;;;;;;;
+;TN2ZCQIJFHW9;EMP NAT 2024 T2 CA TV;Paiement de coupons;0,00;;;;;;;;
+;TN7SWJC7TZX0;BTE SUB 2023-1 TV IF;Paiement de coupons;0,31;;;;;;;;
+;TN8F3G37WSN4;BTE SUB 2023-1 TF IF;Paiement de coupons;1,85;;;;;;;;
+;TN0007800071;BAOBAB-MICROCRED 2020-1 CA TF;Remboursement à l’échéance;1,20;;;;;;;;
+;TNGB6J5LA0W7;EMP NAT 2024 T2 CA TF;Paiement de coupons;0,27;;;;;;;;
+;TN0007800089;BAOBAB-MICROCRED 2020-1 CB TF;Paiement de coupons;0,69;;;;;;;;
+;TNC6WBFURIQ8;EMP NAT 2024 T2 CB TV;Paiement de coupons;12,75;;;;;;;;
+;TN0002601003;STB 2008/1 (CC);Paiement de coupons;0,12;;;;;;;;
+;TN0002601011;STB 2008/1 (CD);Paiement de coupons;1,25;;;;;;;;
+;TN8KXKPKVQU2;EMP NAT 2024 T2 CC TV;Paiement de coupons;4,95;;;;;;;;
+;TN0002601003;STB 2008/1 (CC);Remboursement partiel;0,30;;;;;;;;
+;TN0007800089;BAOBAB-MICROCRED 2020-1 CB TF;Remboursement partiel;1,70;;;;;;;;
+;TN5WI26K4ER0;EMP NAT 2024 T2 CC TF;Paiement de coupons;35,62;;;;;;;;
+;TNX0K9990B08;EMP NAT 2024 T2 CB TF;Paiement de coupons;88,82;;;;;;;;
+;TN0002601011;STB 2008/1 (CD);Remboursement partiel;1,40;;;;;;;;

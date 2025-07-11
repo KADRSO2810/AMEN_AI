@@ -3,12 +3,13 @@ import re
 import time
 import requests
 import pandas as pd
+import tabula
 from urllib.parse import urljoin
 from PyPDF2 import PdfReader
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
@@ -169,6 +170,7 @@ def download_pdf(url, filename):
         return None
 
 def extraire_date(pdf_path):
+    """Extrait la date du bulletin depuis le PDF"""
     with open(pdf_path, 'rb') as file:
         reader = PdfReader(file)
         date_patterns = [
@@ -176,7 +178,8 @@ def extraire_date(pdf_path):
             r'Journée du (\d{2}/\d{2}/\d{4})',
             r'Date : (\d{2}/\d{2}/\d{4})'
         ]
-        found_dates = []
+        
+        # Recherche dans le texte des pages
         for page in reader.pages:
             text = page.extract_text()
             if not text:
@@ -184,14 +187,9 @@ def extraire_date(pdf_path):
             for pattern in date_patterns:
                 match = re.search(pattern, text)
                 if match:
-                    found_dates.append((match.group(1), pattern))
-
-        for date, pattern in found_dates:
-            if 'Bulletin du' in pattern:
-                return date.replace('/', '-')
-        if found_dates:
-            return found_dates[0][0].replace('/', '-')
-
+                    return match.group(1).replace('/', '-')
+        
+        # Recherche dans les métadonnées si pas trouvé dans le texte
         try:
             metadata = reader.metadata
             if metadata and '/CreationDate' in metadata:
@@ -205,127 +203,152 @@ def extraire_date(pdf_path):
 
         return "date_inconnue"
 
-def extraire_tableaux(pdf_path, debut_section, fin_section):
-    with open(pdf_path, 'rb') as file:
-        reader = PdfReader(file)
-        texte_complet = ""
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                texte_complet += text + "\n"
-
-        start_idx = texte_complet.find(debut_section)
-        end_idx = texte_complet.find(fin_section)
-
-        if start_idx == -1 or end_idx == -1:
-            return []
-
-        section_texte = texte_complet[start_idx + len(debut_section):end_idx]
-        lignes = [ligne.strip() for ligne in section_texte.split('\n') if ligne.strip()]
-        tableaux = []
-        tableau_actuel = []
-        for ligne in lignes:
-            if re.match(r'^.*\s{2,}.*$', ligne):
-                tableau_actuel.append(ligne)
-            elif tableau_actuel:
-                tableaux.append(tableau_actuel)
-                tableau_actuel = []
-
-        if tableau_actuel:
-            tableaux.append(tableau_actuel)
-        return tableaux
-
-def convertir_en_dataframe(tableau):
-    lignes_propres = []
-    for ligne in tableau:
-        ligne_propre = re.sub(r'\s{2,}', '|', ligne.strip())
-        colonnes = ligne_propre.split('|')
-        lignes_propres.append(colonnes)
-
-    if len(lignes_propres) < 3:
-        return None
-
-    header = ["ISIN", "Libellé", "Nombre de Titres", "Montant", "Echéance", "Taux"]
-    lignes_normalisees = []
-    for ligne in lignes_propres[2:]:
-        if len(ligne) < 6:
-            ligne = ligne + [''] * (6 - len(ligne))
-        elif len(ligne) > 6:
-            ligne = ligne[:6]
-        lignes_normalisees.append(ligne)
-
-    if not lignes_normalisees:
-        return None
-
+def extraire_et_nettoyer_tableaux(pdf_path):
+    """
+    Extrait uniquement le tableau du PDF avec exactement 6 colonnes et conserve les données telles quelles
+    Args:
+        pdf_path (str): Chemin vers le fichier PDF
+    Returns:
+        pd.DataFrame: DataFrame contenant uniquement le tableau avec 6 colonnes
+    """
     try:
-        df = pd.DataFrame(lignes_normalisees, columns=header)
+        # 1. Extraction avec Tabula
+        dfs = tabula.read_pdf(
+            pdf_path,
+            pages='all',
+            guess=True,
+            multiple_tables=True,
+            stream=True,
+            lattice=False,
+            pandas_options={'header': None, 'dtype': str},
+            silent=True
+        )
+
+        if not dfs:
+            print(f"⚠️ Aucun tableau extrait de {os.path.basename(pdf_path)}")
+            return pd.DataFrame()
+
+        # 2. Sélectionner uniquement les tableaux avec exactement 6 colonnes
+        valid_dfs = [df for df in dfs if len(df.columns) == 6]
+        if not valid_dfs:
+            print(f"⚠️ Aucun tableau avec exactement 6 colonnes dans {os.path.basename(pdf_path)}")
+            return pd.DataFrame()
+
+        # 3. Fusion des tableaux valides
+        df = pd.concat(valid_dfs, ignore_index=True)
+
+        # 4. Nettoyage initial
+        df = df.dropna(how='all')
+
+        # 5. Supprimer les lignes avec des en-têtes ou du texte non désiré
+        mask = df[0].str.contains(
+            r'tunisieclearing|Bulletin|Journée|Montant Pension|Dépositaire Central|ISIN Libelle|Total',
+            case=False, na=False
+        )
+        df = df[~mask]
+
+        # 6. Filtrer les lignes avec un ISIN valide
+        isin_pattern = r'^(TN[A-Z0-9]{10,12}|\d{8,12}|H\d+)$'
+        df = df[df[0].str.match(isin_pattern, na=False)]
+
+        # 7. Vérifier à nouveau le nombre de colonnes
+        if len(df.columns) != 6:
+            print(f"⚠️ Format de tableau incorrect après filtrage dans {os.path.basename(pdf_path)}: {len(df.columns)} colonnes")
+            return pd.DataFrame()
+
+        # 8. Nommer les colonnes
+        df.columns = ["ISIN", "Libellé", "Nombre de Titres", "Montant", "Echéance", "Taux"]
+
+        # 9. Nettoyer les colonnes numériques, en préservant le format du PDF
+        num_cols = ["Nombre de Titres", "Montant", "Echéance", "Taux"]
+        for col in num_cols:
+            if col in df.columns:
+                # Supprimer les espaces, garder les virgules pour correspondre au format PDF
+                df[col] = df[col].str.replace(r'\s+', '', regex=True)
+                # Convertir en numérique pour validation, mais conserver la chaîne pour l'output
+                df[col] = df[col].str.replace(',', '.').apply(lambda x: pd.to_numeric(x, errors='coerce')).astype(str).str.replace('.', ',', regex=False)
+
+        # 10. Nettoyer la colonne Libellé
+        df["Libellé"] = df["Libellé"].str.replace(r'\s+', ' ', regex=True).str.strip()
+
+        # 11. Filtrer les lignes avec des données valides dans toutes les colonnes
+        df = df.dropna(subset=["ISIN", "Libellé", "Nombre de Titres", "Montant", "Echéance", "Taux"])
+
+        # 12. Supprimer les doublons exacts
+        df = df.drop_duplicates()
+
+        # 13. Debugging: sauvegarder les données brutes pour inspection
+        debug_path = os.path.join(DEBUG_DIR, f"raw_{os.path.basename(pdf_path)}.csv")
+        df.to_csv(debug_path, index=False, sep=';', encoding='utf-8-sig')
+        print(f"📄 Données brutes enregistrées dans {debug_path}")
+
+        # 14. Debugging: signaler le nombre de lignes
+        if df.empty:
+            print(f"⚠️ Aucune donnée valide après nettoyage pour {os.path.basename(pdf_path)}")
+        else:
+            print(f"✅ {len(df)} lignes valides extraites de {os.path.basename(pdf_path)}")
+
         return df
-    except:
-        return None
+
+    except Exception as e:
+        print(f"❌ Erreur lors du traitement {pdf_path}: {str(e)}")
+        return pd.DataFrame()
 
 def traiter_pdf(pdf_path, output_dir):
-    """Traite un PDF et exporte tous les tableaux dans un seul CSV"""
+    """Traite un PDF et exporte les données nettoyées en CSV"""
     try:
         date_bulletin = extraire_date(pdf_path)
         if date_bulletin == "date_inconnue":
-            print(f"Date non trouvée dans {os.path.basename(pdf_path)}")
+            print(f"⚠️ Date non trouvée dans {os.path.basename(pdf_path)}")
+            date_bulletin = os.path.basename(pdf_path).split('.')[0]
+        
+        print(f"🔍 Extraction des données depuis {os.path.basename(pdf_path)}...")
+        df = extraire_et_nettoyer_tableaux(pdf_path)
+        
+        if df.empty:
+            print(f"⚠️ Aucune donnée valide dans {os.path.basename(pdf_path)}")
             return
         
-        tableaux = extraire_tableaux(
-            pdf_path,
-            "Les opérations de Mise en Pension du jour",
-            "Les opérations de Rétrocession des Pensions Livrées"
-        )
-        
-        if not tableaux:
-            print(f"Aucun tableau trouvé dans {os.path.basename(pdf_path)} entre les sections spécifiées")
-            return
-        
-        # Fusionner tous les tableaux extraits dans un seul DataFrame
-        dfs = []
-        for i, tableau in enumerate(tableaux, 1):
-            df = convertir_en_dataframe(tableau)
-            if df is not None and not df.empty:
-                dfs.append(df)
-            else:
-                print(f"Tableau {i} ignoré (format invalide)")
-        
-        if not dfs:
-            print(f"Aucune donnée valide extraite de {os.path.basename(pdf_path)}")
-            return
-        
-        df_total = pd.concat(dfs, ignore_index=True)
-        
+        # Création du répertoire de sortie
         date_dir = os.path.join(output_dir, date_bulletin)
         os.makedirs(date_dir, exist_ok=True)
-        fichier_csv = os.path.join(date_dir, f"{date_bulletin}.csv")
-        df_total.to_csv(fichier_csv, index=False, encoding='utf-8-sig', sep=';')
-        print(f"📄 CSV exporté : {fichier_csv}")
+        
+        # Export CSV
+        csv_path = os.path.join(date_dir, f"{date_bulletin}.csv")
+        df.to_csv(csv_path, index=False, sep=';', encoding='utf-8-sig')
+        print(f"✅ Données exportées vers {csv_path} ({len(df)} lignes)")
         
     except Exception as e:
-        print(f"Erreur lors du traitement de {os.path.basename(pdf_path)}: {str(e)}")
+        print(f"❌ Erreur critique lors du traitement de {pdf_path}: {str(e)}")
 
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
+    
+    # Étape 1: Scraping des liens PDF
     bulletin_links = scrape_bulletin_links()
     if not bulletin_links:
-        print("❌ Aucun lien trouvé")
+        print("❌ Aucun lien trouvé, arrêt du programme")
         return
+    
+    # Étape 2: Téléchargement des PDF
+    print("\n=== TÉLÉCHARGEMENT DES PDF ===")
     downloaded_files = []
-    seen = set()
+    seen_urls = set()
+    
     for url, filename in bulletin_links:
-        if url in seen:
+        if url in seen_urls:
             continue
-        seen.add(url)
-        path = download_pdf(url, filename)
-        if path:
-            downloaded_files.append(path)
-
+        seen_urls.add(url)
+        filepath = download_pdf(url, filename)
+        if filepath:
+            downloaded_files.append(filepath)
+    
+    # Étape 3: Traitement des PDF
+    print("\n=== TRAITEMENT DES PDF ===")
     for pdf_path in downloaded_files:
-        print(f"\n=== Traitement de {os.path.basename(pdf_path)} ===")
         traiter_pdf(pdf_path, CSV_DIR)
-
+    
     print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
 
 if __name__ == "__main__":

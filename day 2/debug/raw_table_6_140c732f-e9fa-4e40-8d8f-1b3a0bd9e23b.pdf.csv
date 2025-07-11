@@ -1,0 +1,8 @@
+﻿0;1;2;3;4;5;6;7;8;9;10;11
+;SIN;;;Libellé;;;Type;;;Montant (MDT);
+TN0002601201;STB SUB 2020-1 CA TF;Paiement de coupons;0,39;;;;;;;;
+TN0002601201;STB SUB 2020-1 CA TF;Remboursement à l’échéance;3,74;;;;;;;;
+TN0002601219;STB SUB 2020-1 CC TF;Remboursement partiel;2,26;;;;;;;;
+TN0002601219;STB SUB 2020-1 CC TF;Paiement de coupons;0,75;;;;;;;;
+TN0002601227;STB SUB 2020-1 CE Cpu TF;Paiement de coupons;14,16;;;;;;;;
+TN0002601227;STB SUB 2020-1 CE Cpu TF;Remboursement à l’échéance;20,00;;;;;;;;
