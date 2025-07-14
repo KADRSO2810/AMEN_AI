@@ -278,6 +278,10 @@ def traiter_pdf(pdf_path, output_dir):
         if df.empty:
             return
 
+        # Solution alternative - supprimer les lignes qui correspondent au motif parasite
+        mask = (df.iloc[:, 0] == "ISIN") & (df.iloc[:, 1] == "Libelle") & (df.iloc[:, 2:].isna().all(axis=1))
+        df = df[~mask].reset_index(drop=True)
+
         date_dir = os.path.join(output_dir, date_bulletin)
         os.makedirs(date_dir, exist_ok=True)
 
@@ -287,7 +291,6 @@ def traiter_pdf(pdf_path, output_dir):
 
     except Exception as e:
         print(f"❌ Erreur critique lors du traitement de {pdf_path}: {str(e)}")
-
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
