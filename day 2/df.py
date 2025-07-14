@@ -17,8 +17,8 @@ from selenium.common.exceptions import (
     InvalidSessionIdException, WebDriverException, TimeoutException, NoSuchElementException)
 
 # === CONFIGURATION ===
-CHROMEDRIVER_PATH = r"C:\Users\zizou\OneDrive\Desktop\stage 3ème\day 2\chromedriver-win64\chromedriver.exe"
-BASE_DIR = r"C:\Users\zizou\OneDrive\Desktop\stage 3ème\day 2"
+CHROMEDRIVER_PATH = r"C:\\Users\\zizou\\OneDrive\\Desktop\\stage 3ème\\day 2\\chromedriver-win64\\chromedriver.exe"
+BASE_DIR = r"C:\\Users\\zizou\\OneDrive\\Desktop\\stage 3ème\\day 2"
 PDF_DIR = os.path.join(BASE_DIR, "pdffiles")
 CSV_DIR = os.path.join(BASE_DIR, "csvfiles")
 DEBUG_DIR = os.path.join(BASE_DIR, "debug")
@@ -200,66 +200,45 @@ def extraire_et_nettoyer_tableaux(pdf_path):
         if not dfs:
             return pd.DataFrame()
 
-        valid_dfs = [df for df in dfs if len(df.columns) == 6]
-        if not valid_dfs:
-            return pd.DataFrame()
-
-        df = pd.concat(valid_dfs, ignore_index=True).dropna(how='all')
+        all_rows = []
         isin_pattern = r'^(TN[A-Z0-9]{10,12}|\d{8,12}|H\d+)$'
 
-        # 🔄 Bloc mis à jour pour détecter les ISIN sur plusieurs lignes
-        cleaned_rows = []
-        i = 0
-        temp_row = None
-        while i < len(df):
-            row = df.iloc[i].fillna("").astype(str).str.strip()
+        for df in dfs:
+            if df.shape[1] != 6:
+                continue
+            for _, row in df.iterrows():
+                row = row.fillna("").astype(str).str.strip()
+                all_rows.append(row.tolist())
 
-            if re.match(isin_pattern, row[0]):
-                if temp_row is not None:
-                    cleaned_rows.append(temp_row)
-                temp_row = row
-                i += 1
+        cleaned_rows = []
+        skip_next = False
+
+        for i in range(len(all_rows)):
+            if skip_next:
+                skip_next = False
                 continue
 
-            if i + 1 < len(df):
-                next_row = df.iloc[i + 1].fillna("").astype(str).str.strip()
-                concat_candidate = row[0] + next_row[0]
+            current = all_rows[i]
 
-                if re.match(isin_pattern, concat_candidate):
-                    if temp_row is not None:
-                        cleaned_rows.append(temp_row)
-                    temp_row = row.copy()
-                    temp_row[0] = concat_candidate
-                    for col in range(1, 6):
-                        if temp_row[col] == "" and next_row[col] != "":
-                            temp_row[col] = next_row[col]
-                    i += 2
+            if re.match(isin_pattern, current[0]):
+                cleaned_rows.append(current)
+                continue
+
+            if i + 1 < len(all_rows):
+                next_row = all_rows[i + 1]
+                fusion = current.copy()
+                fusion[0] = (current[0] + next_row[0]).strip()
+                for j in range(1, 6):
+                    fusion[j] = current[j] if current[j] else next_row[j]
+                if re.match(isin_pattern, fusion[0]):
+                    cleaned_rows.append(fusion)
+                    skip_next = True
                     continue
 
-            if temp_row is not None:
-                for col in range(6):
-                    if temp_row[col] == "" and row[col] != "":
-                        temp_row[col] = row[col]
-                i += 1
-            else:
-                i += 1
-
-        if temp_row is not None:
-            cleaned_rows.append(temp_row)
-
-        if not cleaned_rows:
-            return pd.DataFrame()
+            cleaned_rows.append(current)
 
         df = pd.DataFrame(cleaned_rows)
-
-        mask = df[0].str.contains(
-            r'tunisieclearing|Bulletin|Journée|Montant Pension|Dépositaire Central|ISIN Libelle|Total',
-            case=False, na=False
-        )
-        df = df[~mask]
-        df = df[df[0].str.match(isin_pattern, na=False)]
-
-        if len(df.columns) != 6:
+        if df.shape[1] != 6:
             return pd.DataFrame()
 
         df.columns = ["ISIN", "Libellé", "Nombre de Titres", "Montant", "Echéance", "Taux"]
@@ -278,8 +257,6 @@ def extraire_et_nettoyer_tableaux(pdf_path):
                 df[col] = df[col].apply(lambda x: f"{x:,.3f}".replace('.', ',').replace(',', ' ', 1) if pd.notna(x) else x)
 
         df["Libellé"] = df["Libellé"].str.replace(r'\s+', ' ', regex=True).str.strip()
-        df = df.dropna()
-        df = df.drop_duplicates()
 
         debug_path = os.path.join(DEBUG_DIR, f"raw_{os.path.basename(pdf_path)}.csv")
         df.to_csv(debug_path, index=False, sep=';', encoding='utf-8-sig')
