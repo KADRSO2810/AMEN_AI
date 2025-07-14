@@ -278,7 +278,6 @@ def traiter_pdf(pdf_path, output_dir):
         if df.empty:
             return
 
-        # Solution alternative - supprimer les lignes qui correspondent au motif parasite
         mask = (df.iloc[:, 0] == "ISIN") & (df.iloc[:, 1] == "Libelle") & (df.iloc[:, 2:].isna().all(axis=1))
         df = df[~mask].reset_index(drop=True)
 
@@ -291,6 +290,28 @@ def traiter_pdf(pdf_path, output_dir):
 
     except Exception as e:
         print(f"❌ Erreur critique lors du traitement de {pdf_path}: {str(e)}")
+def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"):
+    print("\n=== CRÉATION DE LA DATAFRAME FINALE ===")
+    toutes_les_donnees = []
+
+    for root, _, files in os.walk(csv_root_dir):
+        for file in files:
+            if file.endswith(".csv"):
+                chemin_csv = os.path.join(root, file)
+                try:
+                    df = pd.read_csv(chemin_csv, sep=';', encoding='utf-8-sig')
+                    toutes_les_donnees.append(df)
+                except Exception as e:
+                    print(f"⚠️ Erreur lors de la lecture de {chemin_csv} : {e}")
+
+    if toutes_les_donnees:
+        dataframefinale = pd.concat(toutes_les_donnees, ignore_index=True)
+        chemin_final = os.path.join(csv_root_dir, nom_fichier_final)
+        dataframefinale.to_csv(chemin_final, index=False, sep=';', encoding='utf-8-sig')
+        print(f"✅ Dataframe finale enregistrée dans : {chemin_final} ({len(dataframefinale)} lignes)")
+    else:
+        print("❌ Aucune donnée trouvée pour créer la dataframe finale.")
+
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
@@ -315,6 +336,9 @@ def main():
         traiter_pdf(pdf_path, CSV_DIR)
 
     print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
+
+    # Création de la dataframe finale
+    creer_dataframe_finale(CSV_DIR)
 
 if __name__ == "__main__":
     main()
