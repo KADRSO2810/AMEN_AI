@@ -300,6 +300,20 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
                 chemin_csv = os.path.join(root, file)
                 try:
                     df = pd.read_csv(chemin_csv, sep=';', encoding='utf-8-sig')
+
+                    # ➕ Extraire le nom du dossier parent = date du bulletin (format yyyy-mm-dd ou similaire)
+                    dossier_date = os.path.basename(root)
+
+                    # 🔁 Convertir vers format dd/mm/yyyy si possible
+                    match = re.match(r"(\d{2})-(\d{2})-(\d{4})", dossier_date)
+                    if match:
+                        dateloading = f"{match.group(1)}/{match.group(2)}/{match.group(3)}"
+                    else:
+                        dateloading = "date_inconnue"
+
+                    # ➕ Ajouter la colonne dataloadingdate
+                    df.insert(0, "dataloadingdate", dateloading)
+
                     toutes_les_donnees.append(df)
                 except Exception as e:
                     print(f"⚠️ Erreur lors de la lecture de {chemin_csv} : {e}")
@@ -311,6 +325,7 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
         print(f"✅ Dataframe finale enregistrée dans : {chemin_final} ({len(dataframefinale)} lignes)")
     else:
         print("❌ Aucune donnée trouvée pour créer la dataframe finale.")
+
 
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
