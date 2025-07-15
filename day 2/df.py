@@ -184,7 +184,33 @@ def extraire_date(pdf_path):
             pass
         return "date_inconnue"
 
+def format_francais(val, decimales=3):
+    if pd.isna(val):
+        return val
+    # Format sans séparateur de milliers, avec x décimales
+    s = f"{val:.{decimales}f}"
+    # Remplacer le point décimal par une virgule
+    s = s.replace('.', ',')
+    # Insérer espaces comme séparateur de milliers (groupe de 3 chiffres avant la virgule)
+    # Regex : insère un espace entre groupes de 3 chiffres en partant de la droite (avant la virgule)
+    import re
+    parts = s.split(',')
+    parts[0] = re.sub(r"(?<!^)(?=(\d{3})+$)", " ", parts[0])
+    return ','.join(parts)
+
+
 def extraire_et_nettoyer_tableaux(pdf_path):
+    import re
+
+    def format_francais(val, decimales=3):
+        if pd.isna(val):
+            return val
+        s = f"{val:.{decimales}f}"
+        s = s.replace('.', ',')
+        parts = s.split(',')
+        parts[0] = re.sub(r"(?<!^)(?=(\d{3})+$)", " ", parts[0])
+        return ','.join(parts)
+
     try:
         dfs = tabula.read_pdf(
             pdf_path,
@@ -243,18 +269,25 @@ def extraire_et_nettoyer_tableaux(pdf_path):
 
         df.columns = ["ISIN", "Libellé", "Nombre de Titres", "Montant", "Echéance", "Taux"]
 
+        # Nettoyage & conversion des colonnes numériques
         num_cols = ["Nombre de Titres", "Montant", "Echéance", "Taux"]
         for col in num_cols:
             df[col] = df[col].str.replace(r'\s+', '', regex=True)
-            df[col] = df[col].str.replace(',', '.').apply(lambda x: pd.to_numeric(x, errors='coerce'))
-            if col == "Nombre de Titres":
-                df[col] = df[col].apply(lambda x: f"{x:,.0f}".replace(',', ' ') if pd.notna(x) else x)
-            elif col == "Montant":
-                df[col] = df[col].apply(lambda x: f"{x:,.3f}".replace('.', ',').replace(',', ' ', 1) if pd.notna(x) else x)
-            elif col == "Echéance":
-                df[col] = df[col].apply(lambda x: f"{x:,.0f}".replace(',', ' ') if pd.notna(x) else x)
-            elif col == "Taux":
-                df[col] = df[col].apply(lambda x: f"{x:,.3f}".replace('.', ',').replace(',', ' ', 1) if pd.notna(x) else x)
+            df[col] = df[col].str.replace(',', '.')
+            df[col] = df[col].apply(lambda x: pd.to_numeric(x, errors='coerce'))
+
+        # Formatage des colonnes selon le format français
+        df["Nombre de Titres"] = df["Nombre de Titres"].apply(
+            lambda x: format_francais(x, decimales=0) if pd.notna(x) else x)
+
+        df["Montant"] = df["Montant"].apply(
+            lambda x: format_francais(x, decimales=3) if pd.notna(x) else x)
+
+        df["Echéance"] = df["Echéance"].apply(
+            lambda x: format_francais(x, decimales=0) if pd.notna(x) else x)
+
+        df["Taux"] = df["Taux"].apply(
+            lambda x: format_francais(x, decimales=3) if pd.notna(x) else x)
 
         df["Libellé"] = df["Libellé"].str.replace(r'\s+', ' ', regex=True).str.strip()
 
@@ -373,27 +406,27 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
-    # bulletin_links = scrape_bulletin_links()
-    # if not bulletin_links:
-    #     print("❌ Aucun lien trouvé")
-    #     return
+    bulletin_links = scrape_bulletin_links()
+    if not bulletin_links:
+        print("❌ Aucun lien trouvé")
+        return
 
-    # print("\n=== TÉLÉCHARGEMENT DES PDF ===")
-    # downloaded_files = []
-    # seen_urls = set()
-    # for url, filename in bulletin_links:
-    #     if url in seen_urls:
-    #         continue
-    #     seen_urls.add(url)
-    #     filepath = download_pdf(url, filename)
-    #     if filepath:
-    #         downloaded_files.append(filepath)
+    print("\n=== TÉLÉCHARGEMENT DES PDF ===")
+    downloaded_files = []
+    seen_urls = set()
+    for url, filename in bulletin_links:
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        filepath = download_pdf(url, filename)
+        if filepath:
+            downloaded_files.append(filepath)
 
-    # print("\n=== TRAITEMENT DES PDF ===")
-    # for pdf_path in downloaded_files:
-    #     traiter_pdf(pdf_path, CSV_DIR)
+    print("\n=== TRAITEMENT DES PDF ===")
+    for pdf_path in downloaded_files:
+        traiter_pdf(pdf_path, CSV_DIR)
 
-    # print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
+    print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
 
     # Création de la dataframe finale
     creer_dataframe_finale(CSV_DIR)
