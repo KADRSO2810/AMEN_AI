@@ -290,18 +290,20 @@ def traiter_pdf(pdf_path, output_dir):
 
     except Exception as e:
         print(f"❌ Erreur critique lors du traitement de {pdf_path}: {str(e)}")
+
 def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"):
     print("\n=== CRÉATION DE LA DATAFRAME FINALE ===")
     toutes_les_donnees = []
 
+    # 🔁 Charger tous les fichiers CSV générés à partir des PDF
     for root, _, files in os.walk(csv_root_dir):
         for file in files:
-            if file.endswith(".csv"):
+            if file.endswith(".csv") and file != nom_fichier_final:
                 chemin_csv = os.path.join(root, file)
                 try:
                     df = pd.read_csv(chemin_csv, sep=';', encoding='utf-8-sig')
 
-                    # ➕ Extraire le nom du dossier parent = date du bulletin (format yyyy-mm-dd ou similaire)
+                    # ➕ Extraire le nom du dossier parent = date du bulletin
                     dossier_date = os.path.basename(root)
 
                     # 🔁 Convertir vers format dd/mm/yyyy si possible
@@ -318,39 +320,80 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
                 except Exception as e:
                     print(f"⚠️ Erreur lors de la lecture de {chemin_csv} : {e}")
 
+    # 🔁 Ajouter aussi les données de l'excel pl.xlsx (hors 2025)
+    try:
+        excel_path = r"C:\Users\zizou\OneDrive\Desktop\stage 3ème\day 5\pl.xlsx"
+        df_excel = pd.read_excel(excel_path)
+
+        # Supprimer les colonnes inutiles
+        df_excel = df_excel.drop(columns=[col for col in ['ID', 'SAVEDDATE'] if col in df_excel.columns])
+
+        # Renommer les colonnes pour correspondre au CSV
+        df_excel = df_excel.rename(columns={
+            "LIBELLE": "Libellé",
+            "NBTITRES": "Nombre de Titres",
+            "MONTANT": "Montant",
+            "ECHEANCE": "Echéance",
+            "TAUX": "Taux",
+            "ISIN": "ISIN",
+            "DATALOADINGDATE": "dataloadingdate"
+        })
+
+        # Convertir en datetime pour filtrer
+        df_excel['dataloadingdate'] = pd.to_datetime(df_excel['dataloadingdate'], dayfirst=True, errors='coerce')
+
+        # Filtrer ≠ 2025
+        df_excel = df_excel[df_excel['dataloadingdate'].dt.year != 2025]
+
+        # Si on a déjà d'autres données, adapter les colonnes à leur structure
+        if toutes_les_donnees:
+            colonnes_finales = toutes_les_donnees[0].columns
+            df_excel = df_excel[colonnes_finales]
+
+        toutes_les_donnees.append(df_excel)
+
+        print("✅ Données Excel intégrées (hors 2025)")
+    except Exception as e:
+        print(f"⚠️ Erreur chargement Excel pl.xlsx : {e}")
+
+    # 💾 Fusion et sauvegarde finale (sans suppression des doublons)
     if toutes_les_donnees:
         dataframefinale = pd.concat(toutes_les_donnees, ignore_index=True)
+
+        # Reformater dataloadingdate en texte au format jour/mois/année
+        dataframefinale['dataloadingdate'] = pd.to_datetime(dataframefinale['dataloadingdate'], dayfirst=True, errors='coerce')
+        dataframefinale['dataloadingdate'] = dataframefinale['dataloadingdate'].dt.strftime('%d/%m/%Y')
+
         chemin_final = os.path.join(csv_root_dir, nom_fichier_final)
         dataframefinale.to_csv(chemin_final, index=False, sep=';', encoding='utf-8-sig')
+
         print(f"✅ Dataframe finale enregistrée dans : {chemin_final} ({len(dataframefinale)} lignes)")
     else:
         print("❌ Aucune donnée trouvée pour créer la dataframe finale.")
-
-
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
-    bulletin_links = scrape_bulletin_links()
-    if not bulletin_links:
-        print("❌ Aucun lien trouvé")
-        return
+    # bulletin_links = scrape_bulletin_links()
+    # if not bulletin_links:
+    #     print("❌ Aucun lien trouvé")
+    #     return
 
-    print("\n=== TÉLÉCHARGEMENT DES PDF ===")
-    downloaded_files = []
-    seen_urls = set()
-    for url, filename in bulletin_links:
-        if url in seen_urls:
-            continue
-        seen_urls.add(url)
-        filepath = download_pdf(url, filename)
-        if filepath:
-            downloaded_files.append(filepath)
+    # print("\n=== TÉLÉCHARGEMENT DES PDF ===")
+    # downloaded_files = []
+    # seen_urls = set()
+    # for url, filename in bulletin_links:
+    #     if url in seen_urls:
+    #         continue
+    #     seen_urls.add(url)
+    #     filepath = download_pdf(url, filename)
+    #     if filepath:
+    #         downloaded_files.append(filepath)
 
-    print("\n=== TRAITEMENT DES PDF ===")
-    for pdf_path in downloaded_files:
-        traiter_pdf(pdf_path, CSV_DIR)
+    # print("\n=== TRAITEMENT DES PDF ===")
+    # for pdf_path in downloaded_files:
+    #     traiter_pdf(pdf_path, CSV_DIR)
 
-    print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
+    # print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
 
     # Création de la dataframe finale
     creer_dataframe_finale(CSV_DIR)
