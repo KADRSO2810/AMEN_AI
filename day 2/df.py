@@ -328,7 +328,6 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
     print("\n=== CRÉATION DE LA DATAFRAME FINALE ===")
     toutes_les_donnees = []
 
-    # 🔁 Charger tous les fichiers CSV générés à partir des PDF
     for root, _, files in os.walk(csv_root_dir):
         for file in files:
             if file.endswith(".csv") and file != nom_fichier_final:
@@ -336,32 +335,26 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
                 try:
                     df = pd.read_csv(chemin_csv, sep=';', encoding='utf-8-sig')
 
-                    # ➕ Extraire le nom du dossier parent = date du bulletin
+                    # ➕ Extraire la date depuis le nom du dossier
                     dossier_date = os.path.basename(root)
-
-                    # 🔁 Convertir vers format dd/mm/yyyy si possible
                     match = re.match(r"(\d{2})-(\d{2})-(\d{4})", dossier_date)
                     if match:
                         dateloading = f"{match.group(1)}/{match.group(2)}/{match.group(3)}"
                     else:
                         dateloading = "date_inconnue"
 
-                    # ➕ Ajouter la colonne dataloadingdate
                     df.insert(0, "dataloadingdate", dateloading)
-
                     toutes_les_donnees.append(df)
                 except Exception as e:
                     print(f"⚠️ Erreur lors de la lecture de {chemin_csv} : {e}")
 
-    # 🔁 Ajouter aussi les données de l'excel pl.xlsx (hors 2025)
+    # ➕ Ajouter les données Excel (hors 2025)
     try:
         excel_path = r"C:\Users\zizou\OneDrive\Desktop\stage 3ème\day 5\pl.xlsx"
         df_excel = pd.read_excel(excel_path)
 
-        # Supprimer les colonnes inutiles
         df_excel = df_excel.drop(columns=[col for col in ['ID', 'SAVEDDATE'] if col in df_excel.columns])
 
-        # Renommer les colonnes pour correspondre au CSV
         df_excel = df_excel.rename(columns={
             "LIBELLE": "Libellé",
             "NBTITRES": "Nombre de Titres",
@@ -372,28 +365,38 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
             "DATALOADINGDATE": "dataloadingdate"
         })
 
-        # Convertir en datetime pour filtrer
         df_excel['dataloadingdate'] = pd.to_datetime(df_excel['dataloadingdate'], dayfirst=True, errors='coerce')
-
-        # Filtrer ≠ 2025
         df_excel = df_excel[df_excel['dataloadingdate'].dt.year != 2025]
 
-        # Si on a déjà d'autres données, adapter les colonnes à leur structure
         if toutes_les_donnees:
             colonnes_finales = toutes_les_donnees[0].columns
             df_excel = df_excel[colonnes_finales]
 
         toutes_les_donnees.append(df_excel)
-
         print("✅ Données Excel intégrées (hors 2025)")
     except Exception as e:
         print(f"⚠️ Erreur chargement Excel pl.xlsx : {e}")
 
-    # 💾 Fusion et sauvegarde finale (sans suppression des doublons)
     if toutes_les_donnees:
         dataframefinale = pd.concat(toutes_les_donnees, ignore_index=True)
 
-        # Reformater dataloadingdate en texte au format jour/mois/année
+        # Nettoyage général des colonnes numériques
+        for col in ["Nombre de Titres", "Montant", "Echéance", "Taux"]:
+            if col in dataframefinale.columns:
+                dataframefinale[col] = dataframefinale[col].astype(str)
+                dataframefinale[col] = dataframefinale[col].str.replace('"', '', regex=False)  # enlever les ""
+                dataframefinale[col] = dataframefinale[col].str.replace(' ', '', regex=False)  # enlever les espaces
+                dataframefinale[col] = dataframefinale[col].str.replace(',', '.', regex=False)  # , → .
+                dataframefinale[col] = pd.to_numeric(dataframefinale[col], errors='coerce')
+
+        # Supprimer les lignes incomplètes
+        dataframefinale = dataframefinale.dropna()
+
+        # Filtrer échéance ≤ 399
+        if "Echéance" in dataframefinale.columns:
+            dataframefinale = dataframefinale[dataframefinale["Echéance"] <= 399]
+
+        # Reformater la date
         dataframefinale['dataloadingdate'] = pd.to_datetime(dataframefinale['dataloadingdate'], dayfirst=True, errors='coerce')
         dataframefinale['dataloadingdate'] = dataframefinale['dataloadingdate'].dt.strftime('%d/%m/%Y')
 
@@ -403,6 +406,8 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
         print(f"✅ Dataframe finale enregistrée dans : {chemin_final} ({len(dataframefinale)} lignes)")
     else:
         print("❌ Aucune donnée trouvée pour créer la dataframe finale.")
+
+
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
