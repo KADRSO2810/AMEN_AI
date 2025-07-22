@@ -335,7 +335,6 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
                 try:
                     df = pd.read_csv(chemin_csv, sep=';', encoding='utf-8-sig')
 
-                    # ➕ Extraire la date depuis le nom du dossier
                     dossier_date = os.path.basename(root)
                     match = re.match(r"(\d{2})-(\d{2})-(\d{4})", dossier_date)
                     if match:
@@ -348,13 +347,10 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
                 except Exception as e:
                     print(f"⚠️ Erreur lors de la lecture de {chemin_csv} : {e}")
 
-    # ➕ Ajouter les données Excel (hors 2025)
     try:
-        excel_path = r"C:\Users\zizou\OneDrive\Desktop\stage 3ème\day 5\pl.xlsx"
+        excel_path = r"C:\\Users\\zizou\\OneDrive\\Desktop\\stage 3ème\\day 5\\pl.xlsx"
         df_excel = pd.read_excel(excel_path)
-
         df_excel = df_excel.drop(columns=[col for col in ['ID', 'SAVEDDATE'] if col in df_excel.columns])
-
         df_excel = df_excel.rename(columns={
             "LIBELLE": "Libellé",
             "NBTITRES": "Nombre de Titres",
@@ -364,14 +360,11 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
             "ISIN": "ISIN",
             "DATALOADINGDATE": "dataloadingdate"
         })
-
         df_excel['dataloadingdate'] = pd.to_datetime(df_excel['dataloadingdate'], dayfirst=True, errors='coerce')
         df_excel = df_excel[df_excel['dataloadingdate'].dt.year != 2025]
-
         if toutes_les_donnees:
             colonnes_finales = toutes_les_donnees[0].columns
             df_excel = df_excel[colonnes_finales]
-
         toutes_les_donnees.append(df_excel)
         print("✅ Données Excel intégrées (hors 2025)")
     except Exception as e:
@@ -380,23 +373,37 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
     if toutes_les_donnees:
         dataframefinale = pd.concat(toutes_les_donnees, ignore_index=True)
 
-        # Nettoyage général des colonnes numériques
         for col in ["Nombre de Titres", "Montant", "Echéance", "Taux"]:
             if col in dataframefinale.columns:
                 dataframefinale[col] = dataframefinale[col].astype(str)
-                dataframefinale[col] = dataframefinale[col].str.replace('"', '', regex=False)  # enlever les ""
-                dataframefinale[col] = dataframefinale[col].str.replace(' ', '', regex=False)  # enlever les espaces
-                dataframefinale[col] = dataframefinale[col].str.replace(',', '.', regex=False)  # , → .
+                dataframefinale[col] = dataframefinale[col].str.replace('"', '', regex=False)
+                dataframefinale[col] = dataframefinale[col].str.replace(' ', '', regex=False)
+                dataframefinale[col] = dataframefinale[col].str.replace(',', '.', regex=False)
                 dataframefinale[col] = pd.to_numeric(dataframefinale[col], errors='coerce')
 
-        # Supprimer les lignes incomplètes
         dataframefinale = dataframefinale.dropna()
 
-        # Filtrer échéance ≤ 399
+        # 🔴 SUPPRESSION des lignes avec Taux > 15
+        if "Taux" in dataframefinale.columns:
+            avant = len(dataframefinale)
+            dataframefinale = dataframefinale[dataframefinale["Taux"] <= 15]
+            print(f"🧹 Lignes supprimées (Taux > 15) : {avant - len(dataframefinale)}")
+
+        # 🔴 SUPPRESSION des lignes avec Nombre de Titres > 500000
+        if "Nombre de Titres" in dataframefinale.columns:
+            avant = len(dataframefinale)
+            dataframefinale = dataframefinale[dataframefinale["Nombre de Titres"] <= 500000]
+            print(f"🧹 Lignes supprimées (Titres > 500000) : {avant - len(dataframefinale)}")
+        
+        # Supprimer les lignes où Montant > 150
+        if "Montant" in dataframefinale.columns:
+            avant = len(dataframefinale)
+            dataframefinale = dataframefinale[dataframefinale["Montant"] <= 150]
+            print(f"🧹 Lignes supprimées (Montant > 150) : {avant - len(dataframefinale)}")
+
         if "Echéance" in dataframefinale.columns:
             dataframefinale = dataframefinale[dataframefinale["Echéance"] <= 399]
 
-        # Reformater la date
         dataframefinale['dataloadingdate'] = pd.to_datetime(dataframefinale['dataloadingdate'], dayfirst=True, errors='coerce')
         dataframefinale['dataloadingdate'] = dataframefinale['dataloadingdate'].dt.strftime('%d/%m/%Y')
 
@@ -411,27 +418,27 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
-    bulletin_links = scrape_bulletin_links()
-    if not bulletin_links:
-        print("❌ Aucun lien trouvé")
-        return
+    # bulletin_links = scrape_bulletin_links()
+    # if not bulletin_links:
+    #     print("❌ Aucun lien trouvé")
+    #     return
 
-    print("\n=== TÉLÉCHARGEMENT DES PDF ===")
-    downloaded_files = []
-    seen_urls = set()
-    for url, filename in bulletin_links:
-        if url in seen_urls:
-            continue
-        seen_urls.add(url)
-        filepath = download_pdf(url, filename)
-        if filepath:
-            downloaded_files.append(filepath)
+    # print("\n=== TÉLÉCHARGEMENT DES PDF ===")
+    # downloaded_files = []
+    # seen_urls = set()
+    # for url, filename in bulletin_links:
+    #     if url in seen_urls:
+    #         continue
+    #     seen_urls.add(url)
+    #     filepath = download_pdf(url, filename)
+    #     if filepath:
+    #         downloaded_files.append(filepath)
 
-    print("\n=== TRAITEMENT DES PDF ===")
-    for pdf_path in downloaded_files:
-        traiter_pdf(pdf_path, CSV_DIR)
+    # print("\n=== TRAITEMENT DES PDF ===")
+    # for pdf_path in downloaded_files:
+    #     traiter_pdf(pdf_path, CSV_DIR)
 
-    print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
+    # print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
 
     # Création de la dataframe finale
     creer_dataframe_finale(CSV_DIR)
