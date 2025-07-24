@@ -383,7 +383,7 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
 
         dataframefinale = dataframefinale.dropna()
 
-        # 🔍 Comptage puis suppression des valeurs aberrantes
+        # Comptage puis suppression des valeurs aberrantes
         if "Taux" in dataframefinale.columns:
             nb_taux_sup_15 = (dataframefinale["Taux"] > 15).sum()
             print(f"📊 Nombre de lignes avec Taux > 15 : {nb_taux_sup_15}")
@@ -408,16 +408,46 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
             dataframefinale = dataframefinale[dataframefinale["Echéance"] <= 400]
             print(f"🧹 Lignes supprimées (Echéance > 400) : {nb_echeance_sup_400}")
 
+        # Convertir en datetime
         dataframefinale['dataloadingdate'] = pd.to_datetime(dataframefinale['dataloadingdate'], dayfirst=True, errors='coerce')
+        
+        # Ajout des nouvelles colonnes temporelles
+        dataframefinale['Jour'] = dataframefinale['dataloadingdate'].dt.day.astype(int)
+        dataframefinale['Mois'] = dataframefinale['dataloadingdate'].dt.month.astype(int)
+        
+        # Numéro de semaine dans l'année (1-52/53)
+        dataframefinale['NumeroSemaine'] = dataframefinale['dataloadingdate'].dt.isocalendar().week.astype(int)
+        
+        # Trimestre (1-4)
+        dataframefinale['Trimestre'] = dataframefinale['dataloadingdate'].dt.quarter.astype(int)
+        
+        # Jour de semaine (0=lundi à 6=dimanche)
+        dataframefinale['JourSemaineNum'] = dataframefinale['dataloadingdate'].dt.weekday.astype(int)
+        
+        # Nom du jour de semaine (pour information)
+        dataframefinale['JourSemaine'] = dataframefinale['dataloadingdate'].dt.day_name()
+        
+        # Formater la date pour l'affichage final
         dataframefinale['dataloadingdate'] = dataframefinale['dataloadingdate'].dt.strftime('%d/%m/%Y')
+
+        # Réorganiser les colonnes pour une meilleure lisibilité
+        cols = ['dataloadingdate', 'Jour', 'Mois', 'NumeroSemaine', 
+                'Trimestre', 'JourSemaineNum', 'JourSemaine'] + \
+               [col for col in dataframefinale.columns if col not in ['dataloadingdate', 'Jour', 'Mois', 
+                'NumeroSemaine', 'Trimestre', 'JourSemaineNum', 'JourSemaine']]
+        dataframefinale = dataframefinale[cols]
 
         chemin_final = os.path.join(csv_root_dir, nom_fichier_final)
         dataframefinale.to_csv(chemin_final, index=False, sep=';', encoding='utf-8-sig')
 
         print(f"✅ Dataframe finale enregistrée dans : {chemin_final} ({len(dataframefinale)} lignes)")
+        print("Nouvelles colonnes ajoutées :")
+        print("- NumeroSemaine: Numéro de semaine dans l'année (1-52/53)")
+        print("- Trimestre: Trimestre numérique (1-4)")
+        print("- JourSemaineNum: Jour de semaine numérique (0=lundi à 6=dimanche)")
+        print("- JourSemaine: Nom du jour de semaine")
     else:
         print("❌ Aucune donnée trouvée pour créer la dataframe finale.")
-
 
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
