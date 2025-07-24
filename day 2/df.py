@@ -383,26 +383,30 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
 
         dataframefinale = dataframefinale.dropna()
 
-        # 🔴 SUPPRESSION des lignes avec Taux > 15
+        # 🔍 Comptage puis suppression des valeurs aberrantes
         if "Taux" in dataframefinale.columns:
-            avant = len(dataframefinale)
+            nb_taux_sup_15 = (dataframefinale["Taux"] > 15).sum()
+            print(f"📊 Nombre de lignes avec Taux > 15 : {nb_taux_sup_15}")
             dataframefinale = dataframefinale[dataframefinale["Taux"] <= 15]
-            print(f"🧹 Lignes supprimées (Taux > 15) : {avant - len(dataframefinale)}")
+            print(f"🧹 Lignes supprimées (Taux > 15) : {nb_taux_sup_15}")
 
-        # 🔴 SUPPRESSION des lignes avec Nombre de Titres > 500000
         if "Nombre de Titres" in dataframefinale.columns:
-            avant = len(dataframefinale)
-            dataframefinale = dataframefinale[dataframefinale["Nombre de Titres"] <= 500000]
-            print(f"🧹 Lignes supprimées (Titres > 500000) : {avant - len(dataframefinale)}")
-        
-        # Supprimer les lignes où Montant > 150
+            nb_titres_sup_200k = (dataframefinale["Nombre de Titres"] > 200000).sum()
+            print(f"📊 Nombre de lignes avec Nombre de Titres > 200000 : {nb_titres_sup_200k}")
+            dataframefinale = dataframefinale[dataframefinale["Nombre de Titres"] <= 200000]
+            print(f"🧹 Lignes supprimées (Titres > 200000) : {nb_titres_sup_200k}")
+
         if "Montant" in dataframefinale.columns:
-            avant = len(dataframefinale)
-            dataframefinale = dataframefinale[dataframefinale["Montant"] <= 150]
-            print(f"🧹 Lignes supprimées (Montant > 150) : {avant - len(dataframefinale)}")
+            nb_montant_sup_100 = (dataframefinale["Montant"] > 100).sum()
+            print(f"📊 Nombre de lignes avec Montant > 100 : {nb_montant_sup_100}")
+            dataframefinale = dataframefinale[dataframefinale["Montant"] <= 100]
+            print(f"🧹 Lignes supprimées (Montant > 100) : {nb_montant_sup_100}")
 
         if "Echéance" in dataframefinale.columns:
-            dataframefinale = dataframefinale[dataframefinale["Echéance"] <= 399]
+            nb_echeance_sup_400 = (dataframefinale["Echéance"] > 400).sum()
+            print(f"📊 Nombre de lignes avec Echéance > 400 : {nb_echeance_sup_400}")
+            dataframefinale = dataframefinale[dataframefinale["Echéance"] <= 400]
+            print(f"🧹 Lignes supprimées (Echéance > 400) : {nb_echeance_sup_400}")
 
         dataframefinale['dataloadingdate'] = pd.to_datetime(dataframefinale['dataloadingdate'], dayfirst=True, errors='coerce')
         dataframefinale['dataloadingdate'] = dataframefinale['dataloadingdate'].dt.strftime('%d/%m/%Y')
