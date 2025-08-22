@@ -1,0 +1,42 @@
+model_name,model,scaling,feature_selection,train_rmse,test_rmse,r2
+Optimized Gradient Boosting,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('model',
+                 GradientBoostingRegressor(max_depth=7, n_estimators=200,
+                                           random_state=42))])",True,False,0.9382440672148139,3.4383782796339704,0.8131318094957043
+Optimized Gradient Boosting,"Pipeline(steps=[('model',
+                 GradientBoostingRegressor(max_depth=7, n_estimators=200,
+                                           random_state=42))])",False,False,0.9382440672148139,3.4423418687498017,0.812700736723317
+Optimized Random Forest,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('model',
+                 RandomForestRegressor(max_depth=20, n_estimators=200,
+                                       random_state=42))])",True,False,1.3503745036433117,3.5117098927943307,0.805075991903916
+Optimized Random Forest,"Pipeline(steps=[('model',
+                 RandomForestRegressor(max_depth=20, n_estimators=200,
+                                       random_state=42))])",False,True,1.3484270498022883,3.511783233026277,0.8050678500461419
+Optimized Random Forest,"Pipeline(steps=[('model',
+                 RandomForestRegressor(max_depth=20, n_estimators=200,
+                                       random_state=42))])",False,False,1.3484270498022883,3.511783233026277,0.8050678500461419
+Random Forest,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('model', RandomForestRegressor(random_state=42))])",True,False,1.3567517216703562,3.5132524043323783,0.8049047143350875
+Random Forest,RandomForestRegressor(random_state=42),False,False,1.3539944187330442,3.513464349549412,0.8048811744608303
+Random Forest,RandomForestRegressor(random_state=42),False,True,1.3539944187330442,3.513464349549412,0.8048811744608303
+Gradient Boosting,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('model', GradientBoostingRegressor(random_state=42))])",True,False,4.101166566096109,4.349478811773222,0.7009784351585002
+Gradient Boosting,GradientBoostingRegressor(random_state=42),False,False,4.101166566096109,4.349584149354018,0.700963951312951
+Gradient Boosting,GradientBoostingRegressor(random_state=42),False,True,4.101166566096109,4.349584149354018,0.700963951312951
+Decision Tree,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('model', DecisionTreeRegressor(random_state=42))])",True,False,0.01572324093811544,5.138961784240051,0.5825746240574414
+Decision Tree,DecisionTreeRegressor(random_state=42),False,False,0.01572324093811544,5.145761429361564,0.5814692559594603
+Decision Tree,DecisionTreeRegressor(random_state=42),False,True,0.01572324093811544,5.145761429361564,0.5814692559594603
+K-Neighbors Regressor,KNeighborsRegressor(),False,False,4.608430955170413,5.815499526552073,0.4654330308453486
+K-Neighbors Regressor,KNeighborsRegressor(),False,True,4.608430955170413,5.815499526552073,0.4654330308453486
+K-Neighbors Regressor,"Pipeline(steps=[('scaler', StandardScaler()), ('model', KNeighborsRegressor())])",True,False,4.852262433764672,5.947677259381863,0.4408570424553935
+Support Vector Regression,"Pipeline(steps=[('scaler', StandardScaler()), ('model', SVR())])",True,False,6.319329947713455,6.1026477702820365,0.4113397922402312
+Ridge Regression,Ridge(),False,False,6.844373826729245,6.740517587023398,0.2818509948817308
+Ridge Regression,Ridge(),False,True,6.844373826729245,6.740517587023398,0.2818509948817308
+Linear Regression,"Pipeline(steps=[('scaler', StandardScaler()), ('model', LinearRegression())])",True,False,6.84437382325934,6.740518095570699,0.281850886518316
+Linear Regression,LinearRegression(),False,True,6.84437382325934,6.740518095570704,0.2818508865183148
+Linear Regression,LinearRegression(),False,False,6.84437382325934,6.740518095570704,0.2818508865183148
+Ridge Regression,"Pipeline(steps=[('scaler', StandardScaler()), ('model', Ridge())])",True,False,6.844373836886266,6.740524682761176,0.28184948289110334
+Support Vector Regression,SVR(),False,True,6.989128164516342,6.765628888527656,0.2764902054504158
+Support Vector Regression,SVR(),False,False,6.989128164516342,6.765628888527656,0.2764902054504158

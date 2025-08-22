@@ -452,27 +452,27 @@ def creer_dataframe_finale(csv_root_dir, nom_fichier_final="dataframefinale.csv"
 def main():
     print("=== DÉBUT DU PROGRAMME ===")
     setup_directories()
-    # bulletin_links = scrape_bulletin_links()
-    # if not bulletin_links:
-    #     print("❌ Aucun lien trouvé")
-    #     return
+    bulletin_links = scrape_bulletin_links()
+    if not bulletin_links:
+        print("❌ Aucun lien trouvé")
+        return
 
-    # print("\n=== TÉLÉCHARGEMENT DES PDF ===")
-    # downloaded_files = []
-    # seen_urls = set()
-    # for url, filename in bulletin_links:
-    #     if url in seen_urls:
-    #         continue
-    #     seen_urls.add(url)
-    #     filepath = download_pdf(url, filename)
-    #     if filepath:
-    #         downloaded_files.append(filepath)
+    print("\n=== TÉLÉCHARGEMENT DES PDF ===")
+    downloaded_files = []
+    seen_urls = set()
+    for url, filename in bulletin_links:
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        filepath = download_pdf(url, filename)
+        if filepath:
+            downloaded_files.append(filepath)
 
-    # print("\n=== TRAITEMENT DES PDF ===")
-    # for pdf_path in downloaded_files:
-    #     traiter_pdf(pdf_path, CSV_DIR)
+    print("\n=== TRAITEMENT DES PDF ===")
+    for pdf_path in downloaded_files:
+        traiter_pdf(pdf_path, CSV_DIR)
 
-    # print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
+    print("\n✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
 
     # Création de la dataframe finale
     creer_dataframe_finale(CSV_DIR)
